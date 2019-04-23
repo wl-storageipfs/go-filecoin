@@ -9,8 +9,8 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-hamt-ipld"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
 	"github.com/pkg/errors"
 
@@ -346,6 +346,9 @@ func (store *DefaultStore) writeHead(ctx context.Context, cids types.SortedCidSe
 // writeTipSetAndState writes the tipset key and the state root id to the
 // datastore.
 func (store *DefaultStore) writeTipSetAndState(tsas *TipSetAndState) error {
+	if tsas.TipSetStateRoot == cid.Undef {
+		return errors.New("attempting to write state root cid.Undef")
+	}
 	val, err := cbor.DumpObject(tsas.TipSetStateRoot)
 	if err != nil {
 		return err
