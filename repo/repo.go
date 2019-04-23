@@ -8,7 +8,7 @@ import (
 )
 
 // Version is the current repo version that we require for a valid repo.
-const Version uint = 1
+const Version uint = 2
 
 // Datastore is the datastore interface provided by the repo
 type Datastore interface {
