@@ -278,7 +278,7 @@ func TestSelfDialStorageGoodError(t *testing.T) {
 	assert.Contains(t, outputStr, expectedErrStr)
 }
 
-func TestShowDeal(t *testing.T) {
+func TestShowDealOld(t *testing.T) {
 	tf.IntegrationTest(t)
 
 	minerDaemon := th.NewDaemon(t,
