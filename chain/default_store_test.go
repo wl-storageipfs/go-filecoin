@@ -31,14 +31,14 @@ func initStoreTest(ctx context.Context, t *testing.T) {
 	requireSetTestChain(t, con, true)
 }
 
-func newChainStore() chain.Store {
+func newChainStore() *chain.DefaultStore {
 	r := repo.NewInMemoryRepo()
 	ds := r.Datastore()
 	return chain.NewDefaultStore(ds, genCid)
 }
 
 // requirePutTestChain adds all test chain tipsets to the passed in chain store.
-func requirePutTestChain(t *testing.T, chainStore chain.Store) {
+func requirePutTestChain(t *testing.T, chainStore *chain.DefaultStore) {
 	ctx := context.Background()
 	genTsas := &chain.TipSetAndState{
 		TipSet:          genTS,
@@ -68,13 +68,18 @@ func requirePutTestChain(t *testing.T, chainStore chain.Store) {
 	th.RequirePutTsas(ctx, t, chainStore, link4Tsas)
 }
 
-func requireGetTsasByParentAndHeight(t *testing.T, chain chain.Store, pKey string, h uint64) []*chain.TipSetAndState {
+func requireGetTsasByParentAndHeight(t *testing.T, chain *chain.DefaultStore, pKey string, h uint64) []*chain.TipSetAndState {
 	tsasSlice, err := chain.GetTipSetAndStatesByParentsAndHeight(pKey, h)
 	require.NoError(t, err)
 	return tsasSlice
 }
 
-func requireHeadTipset(t *testing.T, chain chain.Store) types.TipSet {
+type requireHeadTipsetChainStore interface {
+	GetHead() types.SortedCidSet
+	GetTipSet(tsKey types.SortedCidSet) (*types.TipSet, error)
+}
+
+func requireHeadTipset(t *testing.T, chain requireHeadTipsetChainStore) types.TipSet {
 	headTipSet, err := chain.GetTipSet(chain.GetHead())
 	require.NoError(t, err)
 	return *headTipSet
@@ -238,7 +243,7 @@ func TestGetBlocks(t *testing.T) {
 	assert.Equal(t, len(blks), len(gotBlks))
 }
 
-// chain.Store correctly indicates that is has all blocks in put tipsets
+// chain.DefaultStore correctly indicates that is has all blocks in put tipsets
 func TestHasAllBlocks(t *testing.T) {
 	tf.BadUnitTestWithSideEffects(t)
 
@@ -274,7 +279,7 @@ func TestSetGenesis(t *testing.T) {
 	require.Equal(t, genCid, chain.GenesisCid())
 }
 
-func assertSetHead(t *testing.T, chainStore chain.Store, ts types.TipSet) {
+func assertSetHead(t *testing.T, chainStore *chain.DefaultStore, ts types.TipSet) {
 	ctx := context.Background()
 	err := chainStore.SetHead(ctx, ts)
 	assert.NoError(t, err)
