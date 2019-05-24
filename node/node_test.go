@@ -186,7 +186,7 @@ func TestUpdateMessagePool(t *testing.T) {
 	head := chainForTest.GetHead()
 	headTipSet, err := chainForTest.GetTipSet(head)
 	require.NoError(t, err)
-	genTS := *headTipSet
+	genTS := headTipSet
 	m := types.NewSignedMsgs(4, mockSigner)
 	core.MustAdd(node.MsgPool, m[0], m[1])
 
