@@ -69,3 +69,7 @@ func TestIsReorg(t *testing.T) {
 		assert.False(t, chain.IsReorg(curHead, chn))
 	})
 }
+
+func TestIsReorgFork(t *testing.T) {
+
+}

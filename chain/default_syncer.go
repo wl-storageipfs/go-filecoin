@@ -36,7 +36,7 @@ var logSyncer = logging.Logger("chain.syncer")
 type syncerChainReader interface {
 	GetBlock(context.Context, cid.Cid) (*types.Block, error)
 	GetHead() types.SortedCidSet
-	GetTipSet(tsKey types.SortedCidSet) (*types.TipSet, error)
+	GetTipSet(tsKey types.SortedCidSet) (types.TipSet, error)
 	GetTipSetStateRoot(tsKey types.SortedCidSet) (cid.Cid, error)
 	HasTipSetAndState(ctx context.Context, tsKey string) bool
 	PutTipSetAndState(ctx context.Context, tsas *TipSetAndState) error
@@ -268,7 +268,7 @@ func (syncer *DefaultSyncer) syncOne(ctx context.Context, parent, next types.Tip
 		}
 	}
 
-	heavier, err := syncer.consensus.IsHeavier(ctx, next, *headTipSet, nextParentSt, headParentSt)
+	heavier, err := syncer.consensus.IsHeavier(ctx, next, headTipSet, nextParentSt, headParentSt)
 	if err != nil {
 		return err
 	}
@@ -284,21 +284,25 @@ func (syncer *DefaultSyncer) syncOne(ctx context.Context, parent, next types.Tip
 	return nil
 }
 
-func (syncer *DefaultSyncer) logReorg(ctx, curHead, newHead) {
+func (syncer *DefaultSyncer) logReorg(ctx context.Context, curHead, newHead types.TipSet) {
 	curHeadIter := IterAncestors(ctx, syncer.chainStore, curHead)
 	newHeadIter := IterAncestors(ctx, syncer.chainStore, newHead)
-	commonAncestor, err := FindCommonAncestor(curHeadItern, newHeadIter)
+	commonAncestor, err := FindCommonAncestor(curHeadIter, newHeadIter)
 	if err != nil {
 		logSyncer.Debugf("unexpected error when running FindCommonAncestor for reorg log: %s", err.Error())
 		return
-	}	
+	}
 
 	// Refresh iterators modified above
-	curHeadIter = IterAncestors(ctx, syncer.chainStore, curHead)
-	newHeadIter = IterAncestors(ctx, syncer.chainStore, newHead)	
-	reorg, dropped := IsReorg(curHeadIter, newHeadIter, commonAncestor)
+	reorg := IsReorg(curHead, newHead, commonAncestor)
 	if reorg {
-		logSyncer.Infof("dropped %d tipsets in reorg from %s to %s", dropped, headTipSetAndState.TipSet.String(), next.String())
+		dropped, added, err := ReorgDiff(curHead, newHead, commonAncestor)
+		if err == nil {
+			logSyncer.Infof("reorg dropping %d height and adding %d height from %s to %s", dropped, added, curHead.String(), newHead.String())
+		} else {
+			logSyncer.Infof("reorg from %s to %s", curHead.String(), newHead.String())
+			logSyncer.Errorf("unexpected error from ReorgDiff during log: %s", err.Error())
+		}
 	}
 }
 
@@ -384,11 +388,10 @@ func (syncer *DefaultSyncer) HandleNewTipset(ctx context.Context, tipsetCids typ
 	if err != nil {
 		return err
 	}
-	parentTs, err := syncer.chainStore.GetTipSet(parentCids)
+	parent, err := syncer.chainStore.GetTipSet(parentCids)
 	if err != nil {
 		return err
 	}
-	parent := *parentTs
 
 	// Try adding the tipsets of the chain to the store, checking for new
 	// heaviest tipsets.
