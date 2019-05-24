@@ -151,7 +151,7 @@ func (p *mockPublisher) Publish(ctx context.Context, message *types.SignedMessag
 // A chain and actor provider which provides and expects values for a single message.
 type fakeProvider struct {
 	head   types.SortedCidSet // Provided by GetHead and expected by others
-	tipset types.TipSet      // Provided by GetTipset(head)
+	tipset types.TipSet       // Provided by GetTipset(head)
 	addr   address.Address    // Expected by GetActorAt
 	actor  *actor.Actor       // Provided by GetActorAt(head, tipKey, addr)
 }
